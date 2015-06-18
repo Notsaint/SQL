@@ -1,0 +1,224 @@
+/* Automated Database restore û SQL Server 2005/2008/R2
+
+Database Refresh Procedure
+Make sure that the stored procedure ô[dbo].[DB_Restore]ö is available at Target Instance master database.
+Connect to target server instance and open a new query window from SSMS
+Get the backup file location and database name to which the backup needs to be restored as and 
+
+execute the stored procedure as below:
+USE MASTER
+GO
+EXECUTE [DB_Restore]
+@DBName='Test',
+@BackupFile_Path='C:\U_World\Shared\Test_bkp.bak'
+
+Check database to make sure that it is online. */
+
+USE [master]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+IF OBJECT_ID('[dbo].[DB_Restore]') IS NOT NULL
+BEGIN
+DROP PROC [dbo].[DB_Restore];
+END
+GO
+
+/*******************************************************************/
+ù Proc_Type Date_Modified Created_By Description 
+ù Automation 19-Oct-2012 UDAY Initial
+ù
+ù @DBName: Database Name to be restored
+ù @BackupFile_Path: Fully qualified Backup file name
+ù EXECUTE [DB_Restore] 'Test','C:\U_World\Shared\Test_bkp.bak'
+/*******************************************************************/
+CREATE PROCEDURE [dbo].[DB_Restore](
+@DBName SYSNAME,
+@BackupFile_Path VARCHAR(255))
+AS 
+BEGIN 
+SET NOCOUNT ON
+DECLARE @DBFilename VARCHAR(100),
+@DBLogFilename VARCHAR(100),
+@DBDataFile VARCHAR(100),
+@v_strDBLogFile VARCHAR(100),
+@ExecSQL NVARCHAR(1000),
+@ExecSQL1 NVARCHAR(1000),
+@MoveSQL NVARCHAR(4000),
+@ReplaceFlag NVARCHAR(50),
+@Temp NVARCHAR(1000),
+@ListSQL NVARCHAR(4000),
+@ServerVersion NVARCHAR(20),
+@RestorePath VARCHAR(500)
+
+BEGIN TRY
+
+   /**** Update @ReplaceFlag depends on database existence****/
+SET @ReplaceFlag = ö   
+
+IF exists (select name from sys.databases where name = @DBName)
+BEGIN
+SET @ReplaceFlag = ', REPLACE'
+END 
+
+
+/*** Create table ##FILE_LIST to hold file infor from backup file ***/
+SET @ListSQL = ö
+SET @ListSQL = @ListSQL + 'IF (EXISTS (SELECT 1 FROM TEMPDB..SYSOBJECTS WHERE NAME = ö##FILE_LISTö))'
+SET @ListSQL = @ListSQL + 'BEGIN'
+SET @ListSQL = @ListSQL + '   DROP TABLE ##FILE_LIST '
+SET @ListSQL = @ListSQL + 'END '
+
+SET @ListSQL = @ListSQL + 'CREATE TABLE ##FILE_LIST ('
+SET @ListSQL = @ListSQL + '   LogicalName VARCHAR(64),'
+SET @ListSQL = @ListSQL + '   PhysicalName VARCHAR(130),'
+SET @ListSQL = @ListSQL + '   [Type] VARCHAR(1),'
+SET @ListSQL = @ListSQL + '   FileGroupName VARCHAR(64),'
+SET @ListSQL = @ListSQL + '   Size DECIMAL(20, 0),'
+SET @ListSQL = @ListSQL + '   MaxSize DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   FileID bigint,'
+SET @ListSQL = @ListSQL + '   CreateLSN DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   DropLSN DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   UniqueID UNIQUEIDENTIFIER,'
+SET @ListSQL = @ListSQL + '   ReadOnlyLSN DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   ReadWriteLSN DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   BackupSizeInBytes DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   SourceBlockSize INT,'
+SET @ListSQL = @ListSQL + '   filegroupid INT,'
+SET @ListSQL = @ListSQL + '   loggroupguid UNIQUEIDENTIFIER,'
+SET @ListSQL = @ListSQL + '   differentialbaseLSN DECIMAL(25,0),'
+SET @ListSQL = @ListSQL + '   differentialbaseGUID UNIQUEIDENTIFIER,'
+SET @ListSQL = @ListSQL + '   isreadonly BIT,'
+SET @ListSQL = @ListSQL + '   ispresent BIT'
+
+SELECT @ServerVersion = CAST(SERVERPROPERTY ('PRODUCTVERSION') AS NVARCHAR)
+
+IF @ServerVersion LIKE '10.%' 
+BEGIN
+SET @ListSQL = @ListSQL + ', TDEThumbpr DECIMAL'
+END
+
+SET @ListSQL = @ListSQL + ')'
+EXEC (@ListSQL)
+
+INSERT INTO ##FILE_LIST EXEC ('RESTORE FILELISTONLY FROM DISK = ö' + @BackupFile_Path + öö)
+ALTER TABLE ##FILE_LIST ADD D_File VARCHAR(150)
+
+/*** Get the default file location. It help us when database is not already exists ***/
+SELECT TOP(1) @RestorePath =  physical_name FROM sys.master_files;
+SET  @RestorePath = REPLACE(@RestorePath, RIGHT(@RestorePath, CHARINDEX('\', REVERSE(@RestorePath))-1),ö)
+
+/*** Capture information od data files û MDF, NDF and LDF ***/
+/*** We have two cases 1. Database is already there is instance ***/
+/*** 2. New database Restore (ELSE) ***/
+IF EXISTS (SELECT 1 FROM SYS.SYSDATABASES WHERE NAME=@DBName)
+BEGIN
+DECLARE @DataFile VARCHAR(150),
+@LogFile VARCHAR(150);
+
+SELECT TOP 1 @DataFile = physical_name 
+FROM sys.master_files 
+WHERE Database_ID = DB_ID(@DBName) AND TYPE=0
+
+SELECT TOP 1 @LogFile = physical_name 
+FROM sys.master_files 
+WHERE Database_ID = DB_ID(@DBName) AND TYPE=1
+
+UPDATE ##FILE_LIST SET D_File = @DataFile WHERE TYPE='D' AND FileID=1
+
+UPDATE ##FILE_LIST SET D_File = LEFT(@DataFile,LEN(@DataFile)-4)+'_'+CONVERT(VARCHAR(5),FILEID)+'.ndf'
+WHERE TYPE='D' AND FileID>1
+
+UPDATE ##FILE_LIST SET D_File = LEFT(@LogFile,LEN(@LogFile)-4)+'_'+CONVERT(VARCHAR(5),FILEID)+'_log.ldf' WHERE TYPE='L'
+
+END
+ELSE 
+BEGIN
+UPDATE ##FILE_LIST SET D_File=@RestorePath+@DBName+'.mdf'
+
+WHERE TYPE='D' AND FileID=1
+
+UPDATE ##FILE_LIST SET D_File=@RestorePath+@DBName+'_'+CONVERT(VARCHAR(5),FILEID)+'.ndf'
+WHERE TYPE='D' AND FileID>1
+
+UPDATE ##FILE_LIST SET D_File=@RestorePath+@DBName+'_'+CONVERT(VARCHAR(5),FILEID)+'_log.ldf' WHERE TYPE='L'
+
+END
+
+    /*** Loop through the all files mdf,ldf and ndf ****/
+    /*** Form a string ôMOVEö To MDF, MOVE LDF etc ***/
+DECLARE CurFiles CURSOR FOR 
+SELECT 'MOVE Nö' + LogicalName + ö' TO Nö' + D_File + öö 
+FROM ##FILE_LIST
+
+SET @MoveSQL = ö
+
+OPEN CurFiles 
+FETCH NEXT FROM CurFiles into @Temp
+
+WHILE @@Fetch_Status = 0
+BEGIN
+SET @MoveSQL = @MoveSQL + @Temp + ', '
+FETCH NEXT FROM CurFiles into @Temp
+END
+
+CLOSE CurFiles
+DEALLOCATE CurFiles
+
+/*** Kill all connections to the database before restore ***/
+PRINT 'Killing active connections to the database : ' + @DBName + CHAR(10)
+
+SET @ExecSQL = ö
+SELECT   @ExecSQL = @ExecSQL + 'kill ' + CONVERT(CHAR(10), spid) + ' '
+FROM     master.dbo.sysprocesses
+WHERE    DB_NAME(dbid) = @DBName AND DBID <> 0 AND spid <> @@spid
+AND status <> 'background'
+AND status IN ('runnable','sleeping')
+
+EXEC (@ExecSQL)
+
+/*** Restore Database ***/ 
+PRINT 'Restoring ô' + @DBName + 'ö database from ô' + @BackupFile_Path + CHAR(10)
+
+SET @ExecSQL = 'RESTORE DATABASE [' + @DBName + ']'
+SET @ExecSQL = @ExecSQL + ' FROM DISK = ö' + @BackupFile_Path + öö
+SET @ExecSQL = @ExecSQL + ' WITH FILE = 1,'
+SET @ExecSQL = @ExecSQL + @MoveSQL
+SET @ExecSQL = @ExecSQL + ' NOREWIND, '
+SET @ExecSQL = @ExecSQL + ' NOUNLOAD, STATS=10 '
+SET @ExecSQL = @ExecSQL + @ReplaceFlag
+
+PRINT '/**************************************************/'
+PRINT '/****** Start Restore Operation *******************/'
+PRINT '/**************************************************/'
+
+EXEC (@ExecSQL)
+
+PRINT CHAR(10)
+PRINT '/**************************************************/'
+PRINT '/****** Restore Operation Completed ***************/'
+PRINT '/**************************************************/'
+
+END TRY
+BEGIN CATCH
+PRINT 'Restore Failed with error' + ERROR_MESSAGE()
+
+IF (EXISTS (SELECT 1 FROM TEMPDB..sysobjects WHERE NAME ='##FILE_LIST'))
+BEGIN
+DROP TABLE ##FILE_LIST
+END
+RETURN
+END CATCH
+/*** Drop the temp table  ***/
+IF (EXISTS (SELECT 1 FROM TEMPDB..sysobjects WHERE NAME ='##FILE_LIST'))
+BEGIN
+   DROP TABLE ##FILE_LIST
+END
+
+PRINT CHAR(10)+'Database ô' + @DBName +'ö Restored Successfully '
+SET NOCOUNT OFF
+END
