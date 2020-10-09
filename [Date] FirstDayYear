@@ -1,0 +1,74 @@
+-- How to get First and Last day of a Year
+-- First/Last Day of the Year:
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, -1, GETDATE())), 0),
+            'First Day of Previous Year'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3, DATEADD(YEAR,
+            DATEDIFF(YEAR, 0, DATEADD(YEAR, -1, GETDATE())) + 1, 0)),
+            'Last Day of Previous Year'
+UNION ALL
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0, GETDATE()), 0),
+            'First Day of Current Year'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3,
+            DATEADD(YEAR, DATEDIFF(YEAR, 0, GETDATE()) + 1, 0)),
+            'Last Day of Current Year'
+UNION ALL
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR,1,GETDATE())), 0),
+            'First Day of Next Year'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3,
+            DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, 1, GETDATE())) + 1, 0)),
+            'Last Day of Next Year'
+
+Result Set:
+2010-01-01 00:00:00.000 First Day of Previous Year
+2010-12-31 23:59:59.997 Last Day of Previous Year
+2011-01-01 00:00:00.000 First Day of Current Year
+2011-12-31 23:59:59.997 Last Day of Current Year
+2012-01-01 00:00:00.000 First Day of Next Year
+2012-12-31 23:59:59.997 Last Day of Next Year
+(6 row(s) affected)
+
+-- These can be generalized as:
+DECLARE @TRAVELYEARS INT = -1
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, @TRAVELYEARS ,GETDATE())), 0),
+            'First Day of Year'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3,
+            DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, @TRAVELYEARS, GETDATE())) + 1, 0)),
+            'Last Day of Year'
+ 
+SET @TRAVELYEARS = 1
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, @TRAVELYEARS ,GETDATE())), 0),
+            'First Day of Year'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3,
+            DATEADD(YEAR, DATEDIFF(YEAR, 0,
+            DATEADD(YEAR, @TRAVELYEARS, GETDATE())) + 1, 0)),
+            'Last Day of Year'
+
+Result Set:
+2010-01-01 00:00:00.000 First Day of Next Year
+2010-12-31 23:59:59.997 Last Day of Next Year
+(2 row(s) affected)
+ 
+2012-01-01 00:00:00.000 First Day of Next Year
+2012-12-31 23:59:59.997 Last Day of Next Year
+(2 row(s) affected)
+
+-- Еще один варинт
+declare @d date
+set @d= cast(YEAR(GETDATE ( ))+1 as nvarchar)+’0101′ // first day next year
+set @d= cast(YEAR(GETDATE ( )) as nvarchar)+’0101′ // first day Current Year year
+set @d= cast(YEAR(GETDATE ( ))-1 as nvarchar)+’0101′//First Day of Previous Year
+set @d= cast(YEAR(GETDATE ( ))+1 as nvarchar)+’1231′ // first day next year
+set @d= cast(YEAR(GETDATE ( )) as nvarchar)+’1231′ // first day Current Year year
+set @d= cast(YEAR(GETDATE ( ))-1 as nvarchar)+’1231′//First Day of Previous Year
+-- this is best faster and shorter code
