@@ -1,0 +1,17 @@
+-- You can get the Start of Day and End of Day using below queries:
+
+– Living in Today…
+SELECT DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()), 0),
+            'Start of Day'
+UNION ALL
+SELECT GETDATE(), 'Now'
+UNION ALL
+SELECT DATEADD(MILLISECOND, -3,
+            DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + 1, 0)),
+            'End of Day'
+
+Result set will be:
+2011-05-18 00:00:00.000 Start of Day
+2011-05-18 21:09:14.887 Now
+2011-05-18 23:59:59.997 End of Day
+(3 row(s) affected)
