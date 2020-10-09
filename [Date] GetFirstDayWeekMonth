@@ -1,0 +1,15 @@
+-- How to get first Monday of Week/Month
+ 
+– Monday of Current Week
+SELECT DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), 0),
+            'Monday of Current Week'
+UNION ALL
+– First Monday of the Month:
+SELECT DATEADD(WEEK, DATEDIFF(WEEK, 0,
+            DATEADD(DAY, 6 - DATEPART(DAY, GETDATE()), GETDATE())), 0),
+            'First Monday of Current Month'
+
+Result Set:
+2011-05-16 00:00:00.000 Monday of Current Week
+2011-05-02 00:00:00.000 First Monday of Current Month
+(2 row(s) affected)
