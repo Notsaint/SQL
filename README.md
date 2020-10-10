@@ -1,5 +1,7 @@
 # SQL.DataTypes
 **Between1** - Accurate Time between Two Dates in Year, Month,Day Format  
+**Convert1** - Convert Integer to String in SQL Server  
+**Convert2** - Convert integers/numbers into binary format  
 **Count1** - Count Year,Month,Day  
 **Count2** - Get Number Of Days Of Given Month  
 **Count3** - Script to find complete months between two given dates  
