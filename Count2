@@ -1,0 +1,16 @@
+' Get Number Of Days Of Given Month
+' By Pankaj Kumar Choudhary on Jul 06 2016
+' Below is the code snippet for the function that is used to retrieve the number of days. 
+
+CREATE FUNCTION Func_GetDate(@Date_ [date])  
+RETURNS [int]  
+BEGIN  
+DECLARE @Date [datetime];  
+SET @Date=@Date_;  
+DECLARE @Day int;  
+SET @Day=Day(@Date);  
+DECLARE @new_Date [datetime];  
+SET @new_Date=dateadd(day,-@day+1,@Date);  
+SET @Date=dateadd(day,-1,dateadd(month,1,@new_Date));  
+return datediff(Day,@new_Date,@Date)+1;  
+END 
