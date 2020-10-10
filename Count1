@@ -1,0 +1,47 @@
+DECLARE
+       @@FROM VARCHAR(10),
+       @@TO VARCHAR(10),
+       @@DIFF VARCHAR(MAX),
+       @@FLG VARCHAR(1),
+       @@ASSET_NO VARCHAR(MAX),
+       @@MSG  VARCHAR(MAX);
+
+SET @@MSG = '';
+SET @@FROM = CONVERT(VARCHAR(10),GETDATE(), 112);
+SET @@FLG = '0';
+
+CREATE TABLE #TEMP (ASSET VARCHAR(MAX), DIFF VARCHAR(MAX))
+
+DECLARE db_cursor CURSOR FOR SELECT <ASSET_NO>,<PERIOD_TIME> FROM <MY_TABLE> WHERE <PERIOD_TIME> < DATEADD(YEAR,5,GETDATE()) AND <PERIOD_TIME> > DATEADD(MONTH,-6,GETDATE());
+OPEN db_cursor;
+  FETCH NEXT FROM db_cursor INTO @@ASSET_NO,@@TO;
+    WHILE @@FETCH_STATUS = 0                 
+      BEGIN
+        SELECT @@DIFF = DATEDIFF(DAY, @@FROM, @@TO)
+          WHILE @@FLG = '0'
+            BEGIN
+              IF (@@DIFF > 365)
+                BEGIN
+                  SET @@MSG = @@MSG + CONVERT(VARCHAR(MAX),@@DIFF/365) + ' Year, ';
+                  SET @@DIFF = @@DIFF%365;
+                 END
+              ELSE IF (@@DIFF > 30)
+                BEGIN
+                  SET @@MSG = @@MSG + CONVERT(VARCHAR(MAX),@@DIFF/30) + ' Month, ';
+                  SET @@DIFF = @@DIFF%30;
+                END
+              ELSE
+                BEGIN
+                  SET @@MSG = @@MSG + CONVERT(VARCHAR(MAX),@@DIFF) + ' Days';
+                  SET @@FLG = '1';
+                END
+              END
+        INSERT INTO #TEMP VALUES (@@ASSET_NO,@@MSG)
+        SET @@MSG = '';
+        SET @@FLG = '0';
+        FETCH NEXT FROM db_cursor INTO @@ASSET_NO,@@TO;
+       END;
+       CLOSE db_cursor;
+       DEALLOCATE db_cursor;
+SELECT * FROM #TEMP
+DROP TABLE #TEMP
