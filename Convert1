@@ -1,0 +1,19 @@
+' Convert Integer to String in SQL Server
+' Write the following script in SQL Server. We have three different ways in which we can achieve the desired tasks. 
+' We would be examining each one of them and check their output. 
+' In the first method we have used CAST function; in the second method we have used CONVERT function and in the third method we have used STR function.
+
+DECLARE @Number INT  
+  
+SET @Number=12345  
+  
+-- Using CAST function  
+SELECT CAST(@Number as varchar(10)) as Num1  
+  
+-- Using CONVERT function  
+SELECT CONVERT(varchar(10),@Number) as Num2  
+  
+-- Using STR function  
+SELECT LTRIM(STR(@Number,10)) as Num3  
+ 
+
