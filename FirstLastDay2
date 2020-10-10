@@ -1,0 +1,27 @@
+' First and Last Day of Month Calculations in T-SQL
+' Handy few SQL snippets. I find that I need to look this up often (from my own script collection), so I might as well post it and I can just search my blog whenever I need it :)
+
+DECLARE @tdy DATETIME
+SET @tdy = GETDATE()
+ 
+DECLARE @FirstDay1MonthAgo DATETIME
+DECLARE @LastDay1MonthAgo DATETIME
+ 
+DECLARE @FirstDay2MonthAgo DATETIME
+DECLARE @LastDay2MonthAgo DATETIME
+ 
+DECLARE @FirstDay3MonthAgo DATETIME
+DECLARE @LastDay3MonthAgo DATETIME
+ 
+DECLARE @FirstDayCurrentMonth DATETIME
+DECLARE @LastDayCurrentMonth DATETIME
+ 
+SELECT
+    @FirstDayCurrentMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy), 0),
+    @LastDayCurrentMonth = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy) + 1, 0)),
+    @FirstDay1MonthAgo = DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy) - 1, 0),
+    @LastDay1MonthAgo = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy), 0)),
+    @FirstDay2MonthAgo = DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy) - 2, 0),
+    @LastDay2MonthAgo = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy) - 1, 0)),
+    @FirstDay3MonthAgo = DATEADD(MONTH, DATEDIFF(MONTH, 0, CURRENT_TIMESTAMP) - 3, 0),
+    @LastDay3MonthAgo = DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, @tdy) - 2, 0)) 
