@@ -1,0 +1,64 @@
+' Script to find the complete weeks within two given dates
+' Sometimes we need to find out the complete weeks within two given dates. Below script will help in finding the complete weeks within 2 given dates. 
+' In this script, I have used below dates as example 
+
+' Startdate=2015-04-12
+' Enddate=2015-06-10 
+
+SET DATEFORMAT YMD
+if (object_id('tempdb..#weekdays') is not null)
+drop table #weekdays
+
+Declare @StartDate as datetime
+Declare @EndDate as datetime
+Declare @Initialweekstart as datetime
+Declare @weekstart as datetime
+Declare @weekend as datetime
+declare @day as int
+
+set @StartDate='2015-04-12'
+set @EndDate='2015-06-10'
+
+Create table #weekdays(weekstart datetime, weekend datetime)
+
+select @Initialweekstart=dateadd(wk, datediff(wk, 0, @StartDate), 0)
+
+
+if @Initialweekstart<@StartDate
+  begin
+   set @weekstart= DATEADD(wk,1,DATEADD(wk,DATEDIFF(wk,0,@Initialweekstart),0))
+   print  @weekstart
+   set @weekend=DATEADD(dd,6,@weekstart)
+ end
+else
+begin
+set @weekstart=@Initialweekstart
+set @weekend=DATEADD(dd,6,@weekstart)
+end
+while @weekend<=@EndDate
+begin
+  insert into #weekdays(weekstart,weekend)
+  values (@weekstart,@weekend)
+  set @weekstart= DATEADD(wk,1,DATEADD(wk,DATEDIFF(wk,0,@weekstart),0))
+   print  @weekstart
+   set @weekend=DATEADD(dd,6,@weekstart)
+end
+select @day= datepart(dw,@EndDate)
+if @day=6 or @day=7
+begin
+insert into #weekdays(weekstart,weekend)
+values (@weekstart,@weekend)
+end
+select CAST(weekstart AS DATE) as WeekStart, CAST(weekend AS DATE) as WeekEnd from #weekdays
+
+This script will gives the following result:-
+
+WeekStart        WeekEnd
+2015-04-13      2015-04-19
+2015-04-20      2015-04-26
+2015-04-27      2015-05-03
+2015-05-04      2015-05-10
+2015-05-11      2015-05-17
+2015-05-18      2015-05-24
+2015-05-25      2015-05-31
+2015-06-01      2015-06-07
