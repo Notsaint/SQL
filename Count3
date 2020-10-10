@@ -1,0 +1,72 @@
+' Script to find complete months between two given dates
+' Below script will help in finding the complete months within the 2 given dates. In the below script we takes below dates as example
+' Startdate =2015-07-05
+' Enddate =2016-01-06
+
+/**********************Script Start**************************/
+
+IF (object_id('tempdb..#month') is not null)
+DROP TABLE #month
+
+CREATE TABLE #month (id int identity(1,1),MonthStartDate DATETIME,MonthEndDate DATETIME)
+
+DECLARE @startdate AS DATETIME
+DECLARE @enddate AS DATETIME
+
+DECLARE @monthstartdate AS DATETIME
+DECLARE @monthenddate AS DATETIME
+
+SET @startdate='2015-07-05'
+SET @enddate='2016-01-06'
+
+SELECT @monthstartdate= dateadd(mm,1,dateadd(DD,-day(@startdate)+1,@startdate))
+
+SELECT @monthenddate= dateadd(dd,-1,dateadd(mm,1,@monthstartdate))
+
+IF @enddate<@monthenddate
+   BEGIN
+
+    INSERT INTO #month
+    SELECT null,null
+   END
+ELSE IF @startdate=@monthstartdate and @enddate=@monthenddate
+  BEGIN
+
+    INSERT INTO #month
+    SELECT @monthstartdate,@monthenddate
+  END
+ELSE IF (@enddate>@monthenddate)
+   BEGIN
+
+    IF @startdate=@monthstartdate
+    BEGIN
+      INSERT INTO #month
+      SELECT @monthstartdate,@monthenddate
+    END
+
+  WHILE (@enddate>=@monthenddate)
+
+    BEGIN
+
+   INSERT INTO #month
+   SELECT @monthstartdate,@monthenddate
+
+   SELECT @monthstartdate=dateadd(MM,1,@monthstartdate)
+   SELECT @monthenddate=dateadd(day,-1,dateadd(MM,1,@monthstartdate))
+  
+
+    END
+
+END
+
+SELECT cast(MonthStartDate as DATE) as MonthStart,cast(MonthEndDate as DATE) as MonthEnd FROM #month
+
+/**********************Script End**************************/
+
+This script will gives the following result:-
+MonthStart MonthEnd
+2015-08-01        2015-08-31
+2015-09-01        2015-09-30
+2015-10-01        2015-10-31
+2015-11-01        2015-11-30
+2015-12-01        2015-12-31
